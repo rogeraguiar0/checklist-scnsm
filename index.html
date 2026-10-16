@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CheckList de Internação</title>
+  <style>
+    /* Layout: ficha em folha A4 sobre fundo neutro; barra de ações só na tela. */
+    :root {
+      --bg: #e4e4e4;
+      --paper: #ffffff;
+      --ink: #000000;
+      --muted: #222222;
+      --line: #000000;
+      --accent: #000000;
+      --accent-ink: #ffffff;
+      --band: #ececec;
+      --field-bg: #f7f7f7;
+      color-scheme: light;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.4 "Segoe UI", Arial, Helvetica, sans-serif;
+      padding-block: 16px 40px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+
+    .toolbar {
+      max-width: 210mm;
+      margin: 0 auto 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .toolbar .hint {
+      flex: 1 1 260px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    button {
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 9px 16px;
+      border: 1px solid var(--accent);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--accent);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid #000000;
+      outline-offset: 1px;
+    }
+
+    .sheet {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid #999999;
+      padding: 12mm 12mm 10mm;
+      box-shadow: 0 2px 10px rgba(20, 30, 45, .12);
+    }
+
+    /* Espaço reservado ao grampo: na tela é só uma faixa; na impressão vira 46 mm em branco dentro da moldura; somados à margem de 3 cm, o topo livre é de cerca de 28% da folha */
+    .stapler-space {
+      margin: 0 0 14px;
+      padding: 8px;
+      border: 1px dashed #777777;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    header.doc-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+    }
+
+    .org {
+      font-size: 12px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 2px 0 0;
+      font-size: 24px;
+      letter-spacing: .01em;
+      text-wrap: balance;
+    }
+
+    .doc-note {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    h2 {
+      margin: 18px 0 8px;
+      font-size: 12px;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      background: var(--band);
+      padding: 5px 8px;
+      border-left: 4px solid var(--accent);
+    }
+
+    h2 small {
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: 6px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px 14px;
+    }
+
+    .f {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .s6 {
+      grid-column: span 6;
+    }
+
+    .s4 {
+      grid-column: span 4;
+    }
+
+    .s3 {
+      grid-column: span 3;
+    }
+
+    .s2 {
+      grid-column: span 2;
+    }
+
+    label,
+    .lbl {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input[type="text"],
+    textarea {
+      font: inherit;
+      color: var(--ink);
+      width: 100%;
+      min-width: 0;
+      background: var(--field-bg);
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 3px 3px 0 0;
+      padding: 6px 6px 4px;
+    }
+
+    /* Pautas pretas, 2 linhas de 24px; forçadas para sair na impressão */
+    textarea {
+      resize: vertical;
+      min-height: 48px;
+      line-height: 24px;
+      padding: 0 6px;
+      background-image: repeating-linear-gradient(to bottom, transparent 0 23px, #000000 23px 24px);
+      background-color: var(--field-bg);
+      border-bottom: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .inline-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 8px 18px;
+    }
+
+    .inline-row .f {
+      flex: 1 1 200px;
+    }
+
+    .choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .choice input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--accent);
+      margin: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 3px 8px;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 13px;
+    }
+
+    th {
+      background: var(--band);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    td.setor {
+      font-weight: 600;
+      width: 32%;
+    }
+
+    td.chk {
+      width: 12%;
+      text-align: center;
+    }
+
+    td.chk .choice {
+      justify-content: center;
+    }
+
+    th:nth-child(2) {
+      text-align: center;
+    }
+
+    td.em {
+      width: 18%;
+    }
+
+    td input[type="text"] {
+      background: transparent;
+      border-bottom: 0;
+      padding: 2px 2px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    footer.sign {
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Página 2: paisagem, riscos e complexidade assistencial */
+    .sheet-land {
+      max-width: 297mm;
+      margin-top: 24px;
+    }
+
+    .grid12 {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px 14px;
+    }
+
+    .c8 {
+      grid-column: span 8;
+    }
+
+    .c6 {
+      grid-column: span 6;
+    }
+
+    .c4 {
+      grid-column: span 4;
+    }
+
+    .c3 {
+      grid-column: span 3;
+    }
+
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 28px;
+      margin-top: 22px;
+    }
+
+    .col-box {
+      border: 1px solid var(--line);
+      min-width: 0;
+    }
+
+    .col-box h2 {
+      margin: 0;
+      padding: 8px 14px;
+      font-size: 15px;
+    }
+
+    .opt-list {
+      list-style: none;
+      margin: 0;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .opt {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .opt input {
+      width: 26px;
+      height: 26px;
+      accent-color: var(--accent);
+      margin: 0;
+      flex: none;
+    }
+
+    .sheet-land .f>label {
+      font-size: 13px;
+    }
+
+    .sheet-land input[type="text"] {
+      font-size: 16px;
+      padding: 6px 6px 4px;
+    }
+
+    .sheet-land h1 {
+      font-size: 24px;
+    }
+
+    @media screen and (max-width: 560px) {
+
+      .c8,
+      .c6,
+      .c4,
+      .c3 {
+        grid-column: span 12;
+      }
+
+      .cols {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media screen and (max-width: 560px) {
+      .sheet {
+        padding: 14px;
+      }
+
+      .s4,
+      .s3,
+      .s2 {
+        grid-column: span 6;
+      }
+
+      .doc-note {
+        text-align: left;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      html,
+      body {
+        background: #fff;
+      }
+
+      body {
+        padding: 0;
+        font-size: 11.5px;
+      }
+
+      :root {
+        --band: #ffffff;
+        --field-bg: #ffffff;
+        --muted: #000000;
+      }
+
+      .toolbar {
+        display: none !important;
+      }
+
+      .sheet {
+        border: 1.5px solid #000000;
+        box-shadow: none;
+        padding: 5mm;
+        max-width: none;
+        margin: 0;
+      }
+
+      input[type="text"],
+      textarea {
+        background-color: transparent;
+      }
+
+      textarea {
+        resize: none;
+      }
+
+      ::placeholder {
+        color: transparent;
+      }
+
+      h2,
+      th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      h2 {
+        margin-top: 14px;
+      }
+
+      .table-wrap {
+        overflow: visible;
+      }
+
+      tr,
+      .f,
+      .inline-row {
+        break-inside: avoid;
+      }
+
+      /* Página 2 sai em paisagem, em folha própria */
+      @page landscape {
+        size: A4 landscape;
+        margin: 0;
+      }
+
+      /* Margem da folha feita com preenchimento (e não com @page): com @page margin 0 o navegador
+         não tem onde escrever data, hora, título e nome do arquivo, então eles não saem.
+         Página 1: 3 cm de distância até a moldura. Página 2: 1 cm. */
+      .page-p {
+        width: 210mm;
+        height: 296mm;
+        padding: 30mm;
+      }
+
+      .page-l {
+        page: landscape;
+        break-before: page;
+        width: 297mm;
+        height: 209mm;
+        padding: 10mm;
+      }
+
+      .sheet-land {
+        margin-top: 0;
+      }
+
+      /* A página 2 ocupa a folha paisagem inteira: as colunas esticam até o rodapé */
+      .sheet-land {
+        height: 187mm;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sheet-land>header,
+      .sheet-land>.grid12 {
+        flex: none;
+      }
+
+      .sheet-land .cols {
+        flex: 1 1 auto;
+        grid-template-rows: 1fr;
+        margin-top: 5mm;
+        break-inside: avoid;
+      }
+
+      .col-box {
+        display: flex;
+        flex-direction: column;
+        break-inside: avoid;
+      }
+
+      .opt-list {
+        flex: 1 1 auto;
+        justify-content: space-evenly;
+        padding-block: 2mm;
+      }
+
+      /* Moldura da página 1: folha retrato com 3 cm de margem; altura da área útil menos uma folga */
+      #sheet {
+        height: 235mm;
+      }
+
+      /* Compacta a impressão para caber em uma folha com o espaço do grampo */
+      .stapler-space {
+        height: 46mm;
+        padding: 0;
+        border: 0;
+        color: transparent;
+      }
+
+      header.doc-head {
+        padding-bottom: 5px;
+        margin-bottom: 8px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      h2 {
+        margin: 8px 0 4px;
+        padding: 3px 8px;
+        font-size: 11px;
+      }
+
+      .grid {
+        gap: 5px 14px;
+      }
+
+      br {
+        display: none;
+      }
+
+      br+.grid {
+        margin-top: 8px;
+      }
+
+      label,
+      .lbl {
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      input[type="text"] {
+        padding: 3px 4px 2px;
+        line-height: 1.25;
+      }
+
+      th,
+      td {
+        padding: 2px 6px;
+      }
+
+      th,
+      td {
+        padding: 1px 6px;
+        font-size: 11.5px;
+      }
+
+      td {
+        height: 5mm;
+      }
+
+      td input[type="text"] {
+        padding: 0 2px;
+      }
+
+      td .choice input {
+        width: 15px;
+        height: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="toolbar">
+    <button type="button" class="btn-primary" id="btn-print">Imprimir ficha</button>
+    <button type="button" class="btn-secondary" id="btn-clear">Nova ficha (limpar tudo)</button>
+    <span class="hint">Preencha os dados da internação e imprima. Os campos dos outros setores podem ficar em branco
+      para preenchimento à mão. Nada é salvo: ao fechar ou limpar, os dados somem.</span>
+  </div>
+
+  <div class="page page-p">
+    <main class="sheet" id="sheet">
+      <div class="stapler-space" aria-hidden="true">Espaço reservado ao grampo (fica em branco na impressão)</div>
+
+      <header class="doc-head">
+        <div>
+          <div class="org">Santa Casa Nossa Senhora das Mercês</div>
+          <h1>Check List de Internação</h1>
+        </div>
+      </header>
+
+      <h2>Dados da internação</h2>
+      <div class="grid">
+        <div class="f s6">
+          <label for="paciente">Nome do paciente</label>
+          <input type="text" id="paciente" autocomplete="off">
+        </div>
+        <div class="f s2">
+          <label for="data-internacao">Data da internação</label>
+          <input type="text" id="data-internacao" class="mask-date" inputmode="numeric" maxlength="10"
+            placeholder="dd/mm/aaaa" autocomplete="off">
+        </div>
+        <div class="f s2">
+          <label for="registro">Registro</label>
+          <input type="text" id="registro" autocomplete="off">
+        </div>
+        <div class="f s2">
+          <label for="leito">Leito</label>
+          <input type="text" id="leito" autocomplete="off">
+        </div>
+        <div class="f s3">
+          <label for="convenio">Convênio</label>
+          <input type="text" id="convenio" autocomplete="off">
+        </div>
+        <div class="f s3">
+          <label for="cod-proc">Código de procedimento</label>
+          <input type="text" id="cod-proc" autocomplete="off">
+        </div>
+        <div class="f s3">
+          <label for="perm-permitido-1">Tempo de permanência permitido</label>
+          <input type="text" id="perm-permitido-1" autocomplete="off">
+        </div>
+        <div class="f s3">
+          <label for="perm-realizado-1">Tempo de permanência realizado</label>
+          <input type="text" id="perm-realizado-1" autocomplete="off">
+        </div>
+      </div>
+
+      <br />
+
+      <div class="grid">
+        <div class="f s4">
+          <label for="mud-proc">Mudança de procedimento para</label>
+          <input type="text" id="mud-proc" autocomplete="off">
+        </div>
+        <div class="f s2">
+          <label for="data-mudanca">Data da mudança</label>
+          <input type="text" id="data-mudanca" class="mask-date" inputmode="numeric" maxlength="10"
+            placeholder="dd/mm/aaaa" autocomplete="off">
+        </div>
+        <div class="f s3">
+          <label for="perm-permitido-2">Tempo de permanência permitido</label>
+          <input type="text" id="perm-permitido-2" autocomplete="off">
+        </div>
+        <div class="f s3">
+          <label for="perm-realizado-2">Tempo de permanência realizado</label>
+          <input type="text" id="perm-realizado-2" autocomplete="off">
+        </div>
+        <div class="f s6">
+          <span class="lbl">Mudança de clínica</span>
+          <div class="inline-row">
+            <label class="choice" for="clinica-sim"><input type="checkbox" id="clinica-sim"> SIM</label>
+            <div class="f" style="flex:2 1 260px">
+              <label for="clinica-para">Para</label>
+              <input type="text" id="clinica-para" autocomplete="off">
+            </div>
+            <label class="choice" for="clinica-nao"><input type="checkbox" id="clinica-nao"> NÃO</label>
+          </div>
+        </div>
+        <div class="f s4">
+          <label for="medico">Médico</label>
+          <input type="text" id="medico" autocomplete="off">
+        </div>
+        <div class="f s2">
+          <label for="data-alta">Data da alta</label>
+          <input type="text" id="data-alta" class="mask-date" inputmode="numeric" maxlength="10"
+            placeholder="dd/mm/aaaa" autocomplete="off">
+        </div>
+      </div>
+
+      <h2>Faturamento da conta hospitalar <small>Conferência por setor</small></h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Setor</th>
+              <th>Conferido</th>
+              <th>Em</th>
+              <th>Por</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="setor">Setor de Internação</td>
+              <td class="chk"><label class="choice"><input type="checkbox" id="conf-internacao"
+                    aria-label="Setor de Internação conferido"></label></td>
+              <td class="em"><input type="text" id="em-internacao" class="mask-date" inputmode="numeric" maxlength="10"
+                  placeholder="__/__/__" aria-label="Setor de Internação, data"></td>
+              <td><input type="text" id="por-internacao" aria-label="Setor de Internação, responsável"
+                  autocomplete="off">
+              </td>
+            </tr>
+            <tr>
+              <td class="setor">Enfermagem</td>
+              <td class="chk"><label class="choice"><input type="checkbox" id="conf-enfermagem"
+                    aria-label="Enfermagem conferido"></label></td>
+              <td class="em"><input type="text" id="em-enfermagem" class="mask-date" inputmode="numeric" maxlength="10"
+                  placeholder="__/__/__" aria-label="Enfermagem, data"></td>
+              <td><input type="text" id="por-enfermagem" aria-label="Enfermagem, responsável" autocomplete="off"></td>
+            </tr>
+            <tr>
+              <td class="setor">Farmácia</td>
+              <td class="chk"><label class="choice"><input type="checkbox" id="conf-farmacia"
+                    aria-label="Farmácia conferido"></label></td>
+              <td class="em"><input type="text" id="em-farmacia" class="mask-date" inputmode="numeric" maxlength="10"
+                  placeholder="__/__/__" aria-label="Farmácia, data"></td>
+              <td><input type="text" id="por-farmacia" aria-label="Farmácia, responsável" autocomplete="off"></td>
+            </tr>
+            <tr>
+              <td class="setor">Faturamento</td>
+              <td class="chk"><label class="choice"><input type="checkbox" id="conf-faturamento"
+                    aria-label="Faturamento conferido"></label></td>
+              <td class="em"><input type="text" id="em-faturamento" class="mask-date" inputmode="numeric" maxlength="10"
+                  placeholder="__/__/__" aria-label="Faturamento, data"></td>
+              <td><input type="text" id="por-faturamento" aria-label="Faturamento, responsável" autocomplete="off"></td>
+            </tr>
+            <tr>
+              <td class="setor">Arquivo</td>
+              <td class="chk"><label class="choice"><input type="checkbox" id="conf-arquivo"
+                    aria-label="Arquivo conferido"></label></td>
+              <td class="em"><input type="text" id="em-arquivo" class="mask-date" inputmode="numeric" maxlength="10"
+                  placeholder="__/__/__" aria-label="Arquivo, data"></td>
+              <td><input type="text" id="por-arquivo" aria-label="Arquivo, responsável" autocomplete="off"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Observações</h2>
+      <textarea id="observacoes" rows="2" aria-label="Observações"></textarea>
+    </main>
+  </div>
+
+  <div class="page page-l">
+    <section class="sheet sheet-land" id="sheet2">
+      <header class="doc-head">
+        <div>
+          <div class="org">Santa Casa Nossa Senhora das Mercês</div>
+          <h1>Riscos e Complexidade Assistencial</h1>
+        </div>
+      </header>
+
+      <div class="grid12">
+        <div class="f c8">
+          <label for="p2-paciente">Nome do paciente</label>
+          <input type="text" id="p2-paciente" autocomplete="off">
+        </div>
+        <div class="f c4">
+          <label for="p2-leito">Leito</label>
+          <input type="text" id="p2-leito" autocomplete="off">
+        </div>
+        <div class="f c3">
+          <label for="p2-nascimento">Data de nascimento</label>
+          <input type="text" id="p2-nascimento" class="mask-date" inputmode="numeric" maxlength="10"
+            placeholder="dd/mm/aaaa" autocomplete="off">
+        </div>
+        <div class="f c3">
+          <label for="p2-idade">Idade</label>
+          <input type="text" id="p2-idade" autocomplete="off" placeholder="calculada pela data">
+        </div>
+        <div class="f c6">
+          <label for="p2-clinica">Clínica</label>
+          <input type="text" id="p2-clinica" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="cols">
+        <section class="col-box" aria-labelledby="h-riscos">
+          <h2 id="h-riscos">Riscos assistenciais</h2>
+          <ul class="opt-list">
+            <li><label class="opt" for="risco-alergias"><input type="checkbox" id="risco-alergias"> Alergias</label>
+            </li>
+            <li><label class="opt" for="risco-aspiracao"><input type="checkbox" id="risco-aspiracao"> Risco de
+                broncoaspiração</label></li>
+            <li><label class="opt" for="risco-lesao"><input type="checkbox" id="risco-lesao"> Risco de lesão por
+                pressão</label></li>
+            <li><label class="opt" for="risco-dispositivo"><input type="checkbox" id="risco-dispositivo"> Risco de perda
+                de dispositivo</label></li>
+            <li><label class="opt" for="risco-quedas"><input type="checkbox" id="risco-quedas"> Risco de quedas</label>
+            </li>
+          </ul>
+        </section>
+
+        <section class="col-box" aria-labelledby="h-complexidade">
+          <h2 id="h-complexidade">Complexidade assistencial</h2>
+          <ul class="opt-list">
+            <li><label class="opt" for="cx-minima"><input type="checkbox" id="cx-minima" name="complexidade">
+                Mínima</label></li>
+            <li><label class="opt" for="cx-intermediaria"><input type="checkbox" id="cx-intermediaria"
+                  name="complexidade"> Intermediária</label></li>
+            <li><label class="opt" for="cx-alta"><input type="checkbox" id="cx-alta" name="complexidade"> Alta
+                dependência</label></li>
+            <li><label class="opt" for="cx-semi"><input type="checkbox" id="cx-semi" name="complexidade">
+                Semi-intensiva</label></li>
+            <li><label class="opt" for="cx-intensiva"><input type="checkbox" id="cx-intensiva" name="complexidade">
+                Intensiva</label></li>
+          </ul>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Máscara dd/mm/aaaa para os campos de data
+    document.querySelectorAll('.mask-date').forEach(function (el) {
+      el.addEventListener('input', function () {
+        var d = el.value.replace(/\D/g, '').slice(0, 8);
+        var out = d;
+        if (d.length > 4) out = d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4);
+        else if (d.length > 2) out = d.slice(0, 2) + '/' + d.slice(2);
+        el.value = out;
+      });
+    });
+
+    // Data da internação começa com a data de hoje (pode ser alterada)
+    function setToday() {
+      var t = new Date();
+      var dd = String(t.getDate()).padStart(2, '0');
+      var mm = String(t.getMonth() + 1).padStart(2, '0');
+      document.getElementById('data-internacao').value = dd + '/' + mm + '/' + t.getFullYear();
+    }
+    setToday();
+
+    // Mudança de clínica: SIM e NÃO não podem ficar marcados juntos
+    var sim = document.getElementById('clinica-sim');
+    var nao = document.getElementById('clinica-nao');
+    sim.addEventListener('change', function () { if (sim.checked) nao.checked = false; });
+    nao.addEventListener('change', function () { if (nao.checked) sim.checked = false; });
+
+    // Página 2: nome do paciente e leito acompanham o que for digitado na página 1
+    [['paciente', 'p2-paciente'], ['leito', 'p2-leito']].forEach(function (par) {
+      var origem = document.getElementById(par[0]);
+      var destino = document.getElementById(par[1]);
+      origem.addEventListener('input', function () { destino.value = origem.value; });
+    });
+
+    // Idade pela data de nascimento: dias até 28 dias de vida (RN), meses até 1 ano, depois anos
+    function calcIdade(texto) {
+      var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto);
+      if (!m) return '';
+      var d = +m[1], mo = +m[2], y = +m[3];
+      var nasc = new Date(y, mo - 1, d);
+      if (nasc.getFullYear() !== y || nasc.getMonth() !== mo - 1 || nasc.getDate() !== d || y < 1900) return '';
+      var hoje = new Date();
+      var dias = Math.round((Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) - Date.UTC(y, mo - 1, d)) / 86400000);
+      if (dias < 0) return '';
+      if (dias <= 28) return dias + (dias === 1 ? ' dia' : ' dias');
+      var meses = (hoje.getFullYear() - y) * 12 + (hoje.getMonth() - (mo - 1)) - (hoje.getDate() < d ? 1 : 0);
+      if (meses < 1) return dias + ' dias';
+      if (meses < 12) return meses + (meses === 1 ? ' mês' : ' meses');
+      var anos = Math.floor(meses / 12);
+      return anos + (anos === 1 ? ' ano' : ' anos');
+    }
+    document.getElementById('p2-nascimento').addEventListener('input', function () {
+      document.getElementById('p2-idade').value = calcIdade(this.value);
+    });
+
+    // Complexidade assistencial: só um nível por vez
+    var niveis = document.querySelectorAll('input[name="complexidade"]');
+    niveis.forEach(function (n) {
+      n.addEventListener('change', function () {
+        if (n.checked) niveis.forEach(function (o) { if (o !== n) o.checked = false; });
+      });
+    });
+
+    document.getElementById('btn-print').addEventListener('click', function () { window.print(); });
+
+    // Limpar com confirmação em dois cliques (sem janela de diálogo)
+    var clearBtn = document.getElementById('btn-clear');
+    var armed = false, timer = null;
+    clearBtn.addEventListener('click', function () {
+      if (!armed) {
+        armed = true;
+        clearBtn.textContent = 'Clique de novo para apagar tudo';
+        timer = setTimeout(reset, 4000);
+        return;
+      }
+      document.querySelectorAll('.sheet input[type="text"], .sheet textarea').forEach(function (e) { e.value = ''; });
+      document.querySelectorAll('.sheet input[type="checkbox"]').forEach(function (e) { e.checked = false; });
+      reset();
+      setToday();
+      document.getElementById('paciente').focus();
+    });
+    function reset() {
+      armed = false; clearTimeout(timer);
+      clearBtn.textContent = 'Nova ficha (limpar tudo)';
+    }
+  </script>
+</body>
+
+</html>
